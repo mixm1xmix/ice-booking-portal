@@ -90,7 +90,9 @@ const pinInputStyle = (borderColor = BORDER_GREY) => ({
 export default function CurlingBooking() {
 
   // ── User / booking state ───────────────────────────────────────────────────
-  const [emailInput,   setEmailInput]   = useState('')
+  const [emailInput,   setEmailInput]   = useState(() => {
+    try { return localStorage.getItem('csca-skip-email') || '' } catch { return '' }
+  })
   const [enteredEmail, setEnteredEmail] = useState('')
   const [emailError,   setEmailError]   = useState('')
   const [bookings,  setBookings]  = useState({})
@@ -127,6 +129,11 @@ export default function CurlingBooking() {
   // ── Load on mount, poll every 5 s ─────────────────────────────────────────
   useEffect(() => {
     loadAll()
+    // Auto-confirm email if it was remembered from a previous visit
+    try {
+      const saved = localStorage.getItem('csca-skip-email')
+      if (saved && isValidEmail(saved)) setEnteredEmail(saved.toLowerCase())
+    } catch { /* ok */ }
     const iv = setInterval(loadBookings, 5000)
     return () => clearInterval(iv)
   }, [])
@@ -188,7 +195,9 @@ export default function CurlingBooking() {
     if (!v) { setEmailError('Please enter your email address.'); return }
     if (!isValidEmail(v)) { setEmailError('Please enter a valid email address (e.g. name@example.com).'); return }
     setEmailError('')
-    setEnteredEmail(v.toLowerCase())
+    const lower = v.toLowerCase()
+    setEnteredEmail(lower)
+    try { localStorage.setItem('csca-skip-email', lower) } catch { /* ok */ }
   }
 
   // ── Booking helpers ────────────────────────────────────────────────────────
@@ -203,7 +212,7 @@ export default function CurlingBooking() {
   }
 
   // ── Book ───────────────────────────────────────────────────────────────────
-  async function handleBook(club, slot) {
+  async function handleBook(club, slot, requestedSheet) {
     if (!enteredEmail) { showMsg("Please enter your skip's email first."); return }
     const email = enteredEmail.toLowerCase()
     const myEx  = getMyBooking()
@@ -211,7 +220,7 @@ export default function CurlingBooking() {
     const slotEntries = getSlotBookings(club, slot.id)
     if (slotEntries.length >= SHEETS_PER_SLOT) { showMsg('All 4 sheets are booked for that time. Please choose another slot.'); return }
 
-    setSaving(`${club}::${slot.id}`)
+    setSaving(`${club}::${slot.id}::${requestedSheet}`)
     let fresh = {}
     try { const r = await storage.get(STORAGE_KEY); fresh = JSON.parse(r.value) } catch (e) { /* ok */ }
 
@@ -219,16 +228,18 @@ export default function CurlingBooking() {
     if (freshSlot.length >= SHEETS_PER_SLOT) { setBookings(fresh); setSaving(null); showMsg('All sheets just filled up! Please choose another.'); return }
     if (Object.entries(fresh).find(([, v]) => v.email === email)) { setBookings(fresh); setSaving(null); showMsg('Your team already has a booking.'); return }
 
-    const takenSheets = freshSlot.map(([k]) => parseInt(k.split('::')[2]))
-    let sheet = 1
-    while (takenSheets.includes(sheet)) sheet++
+    // Check the specifically requested sheet is still free
+    const requestedKey = `${club}::${slot.id}::${requestedSheet}`
+    if (fresh[requestedKey]) {
+      setBookings(fresh); setSaving(null)
+      showMsg(`Sheet ${requestedSheet} was just taken! Please choose another sheet.`); return
+    }
 
-    const key = `${club}::${slot.id}::${sheet}`
-    const updated = { ...fresh, [key]: { email, club, slotLabel: slot.label, sheet, bookedAt: Date.now() } }
+    const updated = { ...fresh, [requestedKey]: { email, club, slotLabel: slot.label, sheet: requestedSheet, bookedAt: Date.now() } }
     await saveBookings(updated)
     setBookings(updated)
     setSaving(null)
-    showMsg(`Booked! Sheet ${sheet} — ${slot.label} at ${club}`, 'success')
+    showMsg(`Booked! Sheet ${requestedSheet} — ${slot.label} at ${club}`, 'success')
   }
 
   // ── Cancel own ────────────────────────────────────────────────────────────
@@ -360,7 +371,7 @@ export default function CurlingBooking() {
           <div style={{ padding: '16px 28px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 36, lineHeight: 1 }}>⚙️</div>
             <div>
-              <h1 style={{ margin: 0, fontSize: 'clamp(18px,3vw,26px)', fontWeight: 700, color: WHITE }}>Admin Portal — Practice Ice Booking</h1>
+              <h1 style={{ margin: 0, fontSize: 'clamp(18px,3vw,26px)', fontWeight: 700, color: WHITE }}>Admin Portal — NSCC Practice Ice Curling</h1>
               <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>National Stick Curling Championship · March 25, 2026</p>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -671,7 +682,7 @@ export default function CurlingBooking() {
         <div style={{ padding: '20px 28px 22px', display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 48, lineHeight: 1 }}>🥌</div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(20px,4vw,32px)', fontWeight: 700, color: WHITE }}>National Stick Curling Championship</h1>
+            <h1 style={{ margin: 0, fontSize: 'clamp(20px,4vw,32px)', fontWeight: 700, color: WHITE }}>NSCC Practice Ice Curling</h1>
             <p style={{ margin: '5px 0 0', color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(14px,2vw,17px)' }}>Practice Ice Booking — March 25, 2026</p>
             <p style={{ margin: '3px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Wolfville &amp; Windsor Curling Clubs · 4 Sheets Per Time Slot</p>
           </div>
@@ -698,7 +709,7 @@ export default function CurlingBooking() {
                 { n: '1', t: "Enter the skip's email address below and click the red \"Set Email\" button." },
                 { n: '2', t: 'Choose your preferred curling club — click either the Wolfville or Windsor tab.' },
                 { n: '3', t: 'Browse the time slots. Each slot shows how many of the 4 sheets are still available.' },
-                { n: '4', t: 'Click "Book a Sheet" on the time you want. You will be assigned the next available sheet number.' },
+                { n: '4', t: 'Click on Sheet 1, 2, 3, or 4 to book that specific sheet. Available sheets are shown in white — click any white sheet to book it.' },
                 { n: '5', t: 'Each team may only book one session. To change your time, click "Cancel Booking" and then choose a new slot.' },
               ].map(({ n, t }) => (
                 <div key={n} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -732,13 +743,28 @@ export default function CurlingBooking() {
             </div>
             {emailError && <div style={{ color: RED_DARK, fontSize: 14, marginTop: 8, fontWeight: 600 }}>⚠️ {emailError}</div>}
             {enteredEmail && !emailError && (
-              <div style={{ marginTop: 12, fontSize: 16, color: MID_GREY }}>
-                ✅ Booking as: <strong style={{ color: CHARCOAL }}>{enteredEmail}</strong>
-                {myBookingEntry && (
-                  <div style={{ marginTop: 6, color: GREEN, fontSize: 16, fontWeight: 600 }}>
-                    ✅ Booking confirmed — Sheet {myBookingEntry[1].sheet}: <strong>{myBookingEntry[1].slotLabel}</strong> at <strong>{myBookingEntry[1].club}</strong>
-                  </div>
-                )}
+              <div style={{ marginTop: 12, fontSize: 16, color: MID_GREY, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1 }}>
+                  ✅ Booking as: <strong style={{ color: CHARCOAL }}>{enteredEmail}</strong>
+                  {(() => {
+                    try { return localStorage.getItem('csca-skip-email') === enteredEmail ? <span style={{ marginLeft: 8, fontSize: 13, color: GREEN, background: GREEN_BG, border: `1px solid ${GREEN_BORDER}`, borderRadius: 4, padding: '2px 8px' }}>remembered on this device</span> : null } catch { return null }
+                  })()}
+                  {myBookingEntry && (
+                    <div style={{ marginTop: 6, color: GREEN, fontSize: 16, fontWeight: 600 }}>
+                      ✅ Booking confirmed — Sheet {myBookingEntry[1].sheet}: <strong>{myBookingEntry[1].slotLabel}</strong> at <strong>{myBookingEntry[1].club}</strong>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setEnteredEmail('')
+                    setEmailInput('')
+                    try { localStorage.removeItem('csca-skip-email') } catch { /* ok */ }
+                  }}
+                  style={{ padding: '4px 12px', border: `1px solid ${BORDER_GREY}`, borderRadius: 5, background: LIGHT_GREY, color: MID_GREY, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                >
+                  Not you? Clear
+                </button>
               </div>
             )}
           </div>
@@ -762,7 +788,7 @@ export default function CurlingBooking() {
 
           {/* Slots */}
           <div style={{ background: WHITE, border: `1px solid ${BORDER_GREY}`, borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: CHARCOAL, marginBottom: 14 }}>Step 3: Pick a Time Slot and Click "Book a Sheet"</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: CHARCOAL, marginBottom: 14 }}>Step 3: Pick a Time Slot, Then Click a Sheet to Book It</div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: 40, color: MID_GREY, fontSize: 16 }}>Loading ice time...</div>
             ) : (
@@ -784,41 +810,85 @@ export default function CurlingBooking() {
                   const sheetsLeft   = SHEETS_PER_SLOT - slotEntries.length
                   const isFull       = sheetsLeft === 0
                   const mySheetEntry = slotEntries.find(([, v]) => v.email === enteredEmail.toLowerCase())
-                  const isSavingSlot = saving === `${club}::${slot.id}`
                   return (
                     <div key={slot.id} style={{ borderRadius: 8, border: `1px solid ${mySheetEntry ? GREEN_BORDER : isFull ? RED_BORDER : ICE_BORDER}`, background: mySheetEntry ? GREEN_BG : isFull ? RED_LIGHT : ICE_BLUE, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', transition: 'all 0.15s' }}>
+
+                      {/* Time label */}
                       <div style={{ minWidth: 170 }}>
                         <div style={{ fontSize: 16, fontWeight: 700, color: mySheetEntry ? GREEN : isFull ? RED_DARK : CHARCOAL }}>{slot.label}</div>
-                        {mySheetEntry && <div style={{ fontSize: 13, color: GREEN, fontWeight: 600, marginTop: 2 }}>✅ Your booking — Sheet {mySheetEntry[1].sheet}</div>}
+                        {mySheetEntry
+                          ? <div style={{ fontSize: 13, color: GREEN, fontWeight: 600, marginTop: 2 }}>✅ Your booking — Sheet {mySheetEntry[1].sheet}</div>
+                          : isFull
+                          ? <div style={{ fontSize: 13, color: RED_DARK, fontWeight: 600, marginTop: 2 }}>No sheets left</div>
+                          : myBookingEntry
+                          ? <div style={{ fontSize: 13, color: MID_GREY, marginTop: 2 }}>Already booked elsewhere</div>
+                          : <div style={{ fontSize: 13, color: MID_GREY, marginTop: 2 }}>{sheetsLeft} sheet{sheetsLeft !== 1 ? 's' : ''} available — click to book</div>
+                        }
                       </div>
-                      <div style={{ display: 'flex', gap: 7, alignItems: 'center', flex: 1 }}>
+
+                      {/* Sheet tiles — clickable when available */}
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
                         {[1,2,3,4].map(sn => {
-                          const e    = slotEntries.find(([k]) => k.endsWith(`::${sn}`))
-                          const isMe = e && e[1].email === enteredEmail.toLowerCase()
+                          const e       = slotEntries.find(([k]) => k.endsWith(`::${sn}`))
+                          const isMe    = e && e[1].email === enteredEmail.toLowerCase()
+                          const isTaken = !!e && !isMe
+                          const isSavingThis = saving === `${club}::${slot.id}::${sn}`
+                          const canBook = !e && !myBookingEntry && enteredEmail && !mySheetEntry
+
+                          let bg     = WHITE
+                          let border = `2px solid ${BORDER_GREY}`
+                          let color  = MID_GREY
+                          let cursor = 'default'
+                          let title  = `Sheet ${sn} — available`
+
+                          if (isMe)         { bg = GREEN;      border = `2px solid ${GREEN}`;      color = WHITE;    title = `Sheet ${sn} — your booking` }
+                          else if (isTaken) { bg = RED_LIGHT;  border = `2px solid ${RED_BORDER}`; color = RED_DARK; cursor = 'not-allowed'; title = `Sheet ${sn} — taken` }
+                          else if (canBook) { bg = WHITE;      border = `2px solid #aed6ef`;       color = '#1a5276'; cursor = 'pointer'; title = `Click to book Sheet ${sn}` }
+                          else if (!e)      { bg = LIGHT_GREY; border = `2px solid ${BORDER_GREY}`; color = '#aaa' }
+
                           return (
-                            <div key={sn} style={{ width: 44, height: 44, borderRadius: 6, border: `2px solid ${isMe ? GREEN : e ? RED_BORDER : BORDER_GREY}`, background: isMe ? GREEN : e ? RED_LIGHT : WHITE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: isMe ? WHITE : e ? RED_DARK : MID_GREY }}>
-                              <div style={{ fontSize: 14 }}>{isMe ? '✓' : e ? '🔒' : ''}</div>
-                              <div>S{sn}</div>
-                            </div>
+                            <button
+                              key={sn}
+                              onClick={() => canBook && handleBook(club, slot, sn)}
+                              disabled={!canBook || isSavingThis}
+                              title={title}
+                              style={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: 8,
+                                border,
+                                background: bg,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor,
+                                fontFamily: 'inherit',
+                                transition: 'all 0.15s',
+                                boxShadow: canBook ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                transform: isSavingThis ? 'scale(0.95)' : 'scale(1)',
+                              }}
+                            >
+                              <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 2 }}>
+                                {isSavingThis ? '⏳' : isMe ? '✓' : isTaken ? '🔒' : ''}
+                              </div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color }}>
+                                Sheet {sn}
+                              </div>
+                            </button>
                           )
                         })}
-                        <div style={{ fontSize: 14, color: isFull ? RED_DARK : sheetsLeft === 1 ? '#c06000' : GREEN, fontWeight: 600, marginLeft: 4 }}>
-                          {isFull ? 'Full' : `${sheetsLeft} sheet${sheetsLeft !== 1 ? 's' : ''} left`}
-                        </div>
                       </div>
-                      <div style={{ minWidth: 145 }}>
-                        {mySheetEntry ? (
-                          <button onClick={() => handleCancel(mySheetEntry[0])} style={{ width: '100%', padding: '9px 0', border: `1px solid ${RED_BORDER}`, borderRadius: 6, background: RED_LIGHT, color: RED_DARK, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel Booking</button>
-                        ) : isFull ? (
-                          <div style={{ textAlign: 'center', fontSize: 14, color: RED_DARK, fontWeight: 600, padding: '9px 0' }}>No sheets left</div>
-                        ) : myBookingEntry ? (
-                          <div style={{ textAlign: 'center', fontSize: 13, color: MID_GREY, padding: '9px 0' }}>Already booked elsewhere</div>
-                        ) : (
-                          <button onClick={() => handleBook(club, slot)} disabled={!!isSavingSlot} style={{ width: '100%', padding: '9px 0', border: `1px solid ${RED}`, borderRadius: 6, background: RED, color: WHITE, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                            {isSavingSlot ? 'Booking...' : 'Book a Sheet'}
-                          </button>
-                        )}
-                      </div>
+
+                      {/* Cancel button — only shown for own booking */}
+                      {mySheetEntry && (
+                        <button
+                          onClick={() => handleCancel(mySheetEntry[0])}
+                          style={{ padding: '9px 18px', border: `1px solid ${RED_BORDER}`, borderRadius: 6, background: RED_LIGHT, color: RED_DARK, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        >
+                          Cancel Booking
+                        </button>
+                      )}
                     </div>
                   )
                 })}
