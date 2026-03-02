@@ -636,8 +636,9 @@ export default function CurlingBooking() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: '#aaa', paddingBottom: 20 }}>
-                  Canadian Stick Curling Association · Admin Portal · National Championship 2026
+                <div style={{ marginTop: 28, paddingBottom: 28, textAlign: 'center', fontSize: 13, color: '#aaa', lineHeight: 2 }}>
+                  <div>Developed by <a href="https://mercertech.ca" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 600, textDecoration: 'none' }}>MercerTech</a> · mercertech.ca</div>
+                  <div>For assistance with bookings contact <a href="mailto:mattson@ns.sympatico.ca" style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 600, textDecoration: 'none' }}>mattson@ns.sympatico.ca</a></div>
                 </div>
               </>
             )}
@@ -931,8 +932,9 @@ export default function CurlingBooking() {
             • To change your time or club, click <strong>"Cancel Booking"</strong>, then choose a new slot
           </div>
 
-          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: '#aaa', paddingBottom: 20 }}>
-            Canadian Stick Curling Association · National Championship 2026
+          <div style={{ marginTop: 28, paddingBottom: 28, textAlign: 'center', fontSize: 13, color: MID_GREY, lineHeight: 2 }}>
+            <div>Developed by <a href="https://mercertech.ca" target="_blank" rel="noopener noreferrer" style={{ color: RED, fontWeight: 600, textDecoration: 'none' }}>MercerTech</a> · mercertech.ca</div>
+            <div>For assistance with bookings contact <a href="mailto:mattson@ns.sympatico.ca" style={{ color: RED, fontWeight: 600, textDecoration: 'none' }}>mattson@ns.sympatico.ca</a></div>
           </div>
         </div>
       </div>
