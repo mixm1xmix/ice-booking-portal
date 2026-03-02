@@ -129,10 +129,16 @@ export default function CurlingBooking() {
   // ── Load on mount, poll every 5 s ─────────────────────────────────────────
   useEffect(() => {
     loadAll()
-    // Auto-confirm email if it was remembered from a previous visit
+    // Auto-confirm remembered email — but only pre-fill the input so the user
+    // can see what will be used. We confirm it immediately only when the input
+    // still matches (i.e. user hasn't started typing something new).
     try {
       const saved = localStorage.getItem('csca-skip-email')
-      if (saved && isValidEmail(saved)) setEnteredEmail(saved.toLowerCase())
+      if (saved && isValidEmail(saved)) {
+        // emailInput is already initialised to the saved value via useState,
+        // so we can safely auto-confirm it here.
+        setEnteredEmail(saved.toLowerCase())
+      }
     } catch { /* ok */ }
     const iv = setInterval(loadBookings, 5000)
     return () => clearInterval(iv)
@@ -728,7 +734,14 @@ export default function CurlingBooking() {
               <input
                 type="email"
                 value={emailInput}
-                onChange={e => { setEmailInput(e.target.value); setEmailError('') }}
+                onChange={e => {
+                  const v = e.target.value
+                  setEmailInput(v)
+                  setEmailError('')
+                  // If the user edits the field away from the confirmed email,
+                  // un-confirm immediately so no booking can fire on the old value
+                  if (v.trim().toLowerCase() !== enteredEmail) setEnteredEmail('')
+                }}
                 onKeyDown={e => e.key === 'Enter' && handleSetEmail()}
                 placeholder="skip@example.com"
                 style={{ flex: '1 1 220px', padding: '13px 16px', borderRadius: 7, border: `2px solid ${emailError ? RED : BORDER_GREY}`, background: WHITE, color: CHARCOAL, fontSize: 20, fontFamily: 'inherit', outline: 'none' }}
