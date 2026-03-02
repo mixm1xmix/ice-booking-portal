@@ -1,4 +1,4 @@
-# NSCC Practice Ice Curling
+# NSCC 2026 - Practice Ice Booking
 
 March 25, 2026 · Wolfville & Windsor Curling Clubs
 

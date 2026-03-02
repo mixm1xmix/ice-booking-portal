@@ -371,7 +371,7 @@ export default function CurlingBooking() {
           <div style={{ padding: '16px 28px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 36, lineHeight: 1 }}>⚙️</div>
             <div>
-              <h1 style={{ margin: 0, fontSize: 'clamp(18px,3vw,26px)', fontWeight: 700, color: WHITE }}>Admin Portal — NSCC Practice Ice Curling</h1>
+              <h1 style={{ margin: 0, fontSize: 'clamp(18px,3vw,26px)', fontWeight: 700, color: WHITE }}>Admin Portal — NSCC 2026 Practice Ice Booking</h1>
               <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>National Stick Curling Championship · March 25, 2026</p>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -682,7 +682,7 @@ export default function CurlingBooking() {
         <div style={{ padding: '20px 28px 22px', display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 48, lineHeight: 1 }}>🥌</div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(20px,4vw,32px)', fontWeight: 700, color: WHITE }}>NSCC Practice Ice Curling</h1>
+            <h1 style={{ margin: 0, fontSize: 'clamp(20px,4vw,32px)', fontWeight: 700, color: WHITE }}>NSCC 2026 - Practice Ice Booking</h1>
             <p style={{ margin: '5px 0 0', color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(14px,2vw,17px)' }}>Practice Ice Booking — March 25, 2026</p>
             <p style={{ margin: '3px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: 13, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Wolfville &amp; Windsor Curling Clubs · 4 Sheets Per Time Slot</p>
           </div>
